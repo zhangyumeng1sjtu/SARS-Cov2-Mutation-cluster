@@ -3,11 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
-from sklearn.cluster import KMeans, SpectralClustering, Birch
+from sklearn.cluster import KMeans, SpectralClustering, Birch,DBSCAN
 import matplotlib.cm as cm
 from sklearn.preprocessing import StandardScaler,MinMaxScaler
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score
+from sklearn.mixture import GaussianMixture
 from PIL import Image
 import geocoder
 import random
@@ -87,17 +89,32 @@ def get_loc(loc_name):
     g = geocoder.arcgis(loc_name)
     return g.latlng
     
-option_4 = st.sidebar.selectbox("Cluster Algorithm",('K-means','Birch','SpectralClustering'))
+option_4 = st.sidebar.selectbox("Cluster Algorithm",('K-means','Birch','SpectralClustering',"DBSCAN","GaussianMixture"))
 dic = {'K-means': KMeans,'Birch':Birch, 'SpectralClustering':SpectralClustering}
-option_5 = st.sidebar.slider("Numbers of Clusters",2,8,3)
+if not option_4 == "DBSCAN":
+    option_5 = st.sidebar.slider("Numbers of Clusters",2,8,3)
 
 
 if st.checkbox('Let\'s Start the Clustering'): 
-    cluster_ = train(X,dic[option_4],option_5)
+
+    if  option_4 == "DBSCAN":
+        option_minpoint = st.sidebar.slider("Numbers of minpoints",1,15,5)
+        option_eps = st.sidebar.slider("Epsilon",0.0,1.0,0.5)
+        cluster_ = DBSCAN(eps=option_eps,min_samples=option_minpoint).fit_predict(X)
+        option_5 = max(cluster_) - min(cluster_) + 1
+    elif option_4 == "GaussianMixture":
+        cluster_ = GaussianMixture(n_components=option_5).fit_predict(X)
+    else:
+        cluster_ = train(X,dic[option_4],option_5)
+
+
+    # st.write(min(cluster_))
     plt.figure(figsize=(8, 6))
     plt.scatter(X_new[:,0], X_new[:,1], c=cluster_)
     plt.title("{} Result for {} Clusters".format(option_4,option_5))
     st.pyplot()
+    envalue = silhouette_score(X,cluster_,sample_size=len(cluster_))
+    st.write("Silhouette Coefficient:{}".format(envalue))
 
     index =  default_idx if default else df.index
     label_info = pd.DataFrame(cluster_).set_index(index)
@@ -119,7 +136,10 @@ if st.checkbox('Let\'s Start the Clustering'):
     st.dataframe(result)
 
 
-    option_6 = st.sidebar.slider("Select one Cluster: ", 0, option_5-1,0)
+    if not option_4 == "DBSCAN":
+        option_6 = st.sidebar.slider("Select one Cluster: ", 0, option_5-1,0)
+    else:
+        option_6 = option_6 = st.sidebar.slider("Select one Cluster: ", int(min(cluster_)), int(max(cluster_)),0)
     select_result = result[result['Cluster Label']==option_6]
 
     lat = np.array(select_result['lat']) + np.random.randn(len(select_result))/5-0.1
