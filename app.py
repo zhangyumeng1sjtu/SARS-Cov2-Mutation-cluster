@@ -41,13 +41,17 @@ if option_1:
             matrix = pd.pivot_table(new_data,index=['ref'],columns=['alt'],values=['mutation'], aggfunc= ['count']).fillna(0)
             matrix.columns = matrix.columns.droplevel((0,1))
             st.table(matrix)
-        df1 = pd.pivot_table(new_data,index=['seq_id'],columns=['mutation'],values=['start','end'],aggfunc= ['mean','std']).fillna(0)
+        df1 = pd.pivot_table(new_data,index=['seq_id'],columns=['mutation'],values=['start'],aggfunc= ['mean','std']).fillna(0)
         df2 = pd.pivot_table(new_data,index=['seq_id'],columns=['mutation'],values=['type'],aggfunc= ['count']).fillna(0)
         df = pd.concat([df1,df2],axis=1)
         default = False
         if st.checkbox("Show Correlation Heatmap"):
-            plt.figure(figsize=(10,10))
+            plt.figure(figsize=(6,6))
             sns.heatmap(df.corr(), square=True,annot=True,cmap='viridis')
+            plt.xticks(np.arange(0.5,6.5,1),['MV_mean','SV_mean','MV_std','MV_std','MV_count','SV_count'],size=7,rotation=90)
+            plt.yticks(np.arange(0.5,6.5,1),['MV_mean','SV_mean','SV_std','SV_std','MV_count','SV_count'],size=7)
+            plt.xlabel(None)
+            plt.ylabel(None)
             plt.title("Correlation Heatmap")
             st.pyplot()
 
@@ -59,8 +63,8 @@ if default == True:
 else:
     X = df.values
 
-option_2 = st.sidebar.selectbox("Preprocessing Method",('None','Nomalize','Standardize'))
-if option_2 == 'Nomalize':
+option_2 = st.sidebar.selectbox("Preprocessing Method",('None','Normalize','Standardize'))
+if option_2 == 'Normalize':
     X = MinMaxScaler().fit_transform(X)
 elif option_2 == 'Standardize':
     X = StandardScaler().fit_transform(X)
